@@ -1,1 +1,13 @@
 <h1 style='text-align: center;'>Welcome to the ZenFit student portal.</h1>
+
+<div style='display: flex; flex-direction: column; align-items: center;'>
+  <% if signed_in? %>
+    <div id='account-details'>
+      <b>Account:</b> <%= current_user.email %>
+    </div>
+    <br />
+    <%= button_to "Sign out", sign_out_path, method: :delete %>
+  <% else %>
+    <%= link_to "Sign in", sign_in_path %>
+  <% end %>
+</div>
