@@ -9,6 +9,18 @@
       </div>
     </div>
     <br />
+    <div id='upcoming-events' style='display: flex; flex-direction: column; align-items: center;'>
+      <h3>Upcoming events</h3>
+      <% @camps.each do |camp| %>
+        <u><%= camp.name %></u>
+        <%= camp.caption %>
+        <br />
+        <br />
+        <% camp.skus.each do |session| %>
+          <%= session.id.humanize %> <%= number_to_currency (session.price/100) %>
+        <% end %>
+      <% end %>
+    </div>
     <%= button_to "Sign out", sign_out_path, method: :delete %>
   <% else %>
     <%= link_to "Sign in", sign_in_path %>
