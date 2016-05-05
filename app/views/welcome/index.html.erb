@@ -4,6 +4,9 @@
   <% if signed_in? %>
     <div id='account-details'>
       <b>Account:</b> <%= current_user.email %>
+      <div id='payment-method'>
+        <b>Membership:</b> <%= link_to 'Add membership plan', new_membership_path %>  
+      </div>
     </div>
     <br />
     <%= button_to "Sign out", sign_out_path, method: :delete %>
