@@ -1,42 +1,57 @@
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 <script>
   Stripe.setPublishableKey("<%= ENV['STRIPE_PUBLISHABLE_KEY'] %>");
-  var $form = $('#payment-form');
-  $(function() {
-    $form.submit(function(event) {
-      Stripe.card.createToken({
-        number: $('.card-number').val(),
-        cvc: $('.card-cvc').val(),
-        exp_month: $('.card-expiry-month').val(),
-        exp_year: $('.card-expiry-year').val()
-      }, stripeResponseHandler);
+  
+  var stripeResponseHandler = function(status, response) {
+    var $form = $('#membership-form');
+    if (response.error) {
+      // Show the errors on the form
+      // $form.find('#error_explanation').text(response.error.message);
+      $form.find('button').prop('disabled', false);
+    } else {
+      // token contains id, last4, and card type
+      var token = response.id;
+      // Insert the token into the form so it gets submitted to the server
+      $form.append($('<input type="hidden" name="stripeToken" />').val(token));
+      // and re-submit
+      $form.get(0).submit();
+    }
+  };
+  
+  jQuery(function($) {
+    $.fn.toggleInputError = function(erred) {
+      $('button').prop('disabled', false);
+      this.parent('.form-group').toggleClass('has-error', erred);
+      return this;
+    };
+    
+    $('#membership-form').submit(function(e) {
+      e.preventDefault();
       
-      Stripe.bankAccount.createToken({
-        country: $('.country').val(),
-        currency: $('.currency').val(),
-        routing_number: $('.routing-number').val(),
-        account_number: $('.account-number').val(),
-        account_holder_name: $('.name').val(),
-        account_holder_type: $('.account_holder_type').val()
-      }, stripeResponseHandler);
+      var $form = $(this);
       
-      function stripeResponseHandler(status, response) {
-        // Grab the form:
-        if (response.error) { // Problem!
-          // Show the errors on the form
-          $form.find('.payment-errors').text(response.error.message);
-          $form.find('.bank-errors').text(response.error.message);
-          $form.find('button').prop('disabled', false); // Re-enable submission
-        } else { // Token was created!
-          // Get the token ID:
-          var token = response.id;
-          // Insert the token into the form so it gets submitted to the server:
-          $form.append($('<input type="hidden" name="stripeToken" />').val(token));
-          // Submit the form:
-          $form.get(0).submit();
-
-        }
-      }
+      $form.find('button').prop('disabled', true);
+      
+      if($("input:checked[name=payment-method]").val() == 'credit-card') {
+        Stripe.card.createToken({
+          number: $('.card-number').val(),
+          cvc: $('.card-cvc').val(),
+          exp_month: $('.card-expiry-month').val(),
+          exp_year: $('.card-expiry-year').val()
+        }, stripeResponseHandler);
+      } else {
+        Stripe.bankAccount.createToken({
+          routing_number: $('.routing-number').val(),
+          account_number: $('.account-number').val(),
+          account_holder_name: $('.account-holder-name').val(),
+          account_holder_type: 'Individual',
+          country: 'US'
+        }, function(status, response) {
+          stripeResponseHandler(status, response);
+        });
+      };
+      
+      return false;
     });
   });
 
@@ -46,13 +61,7 @@
 
   <h2>Please select a ZenFit membership plan.</h2>
   
-  <%= form_tag memberships_path do %>
-    <% if flash[:error].present? %>
-      <div id="error_explanation">
-        <p><%= flash[:error] %></p>
-      </div>
-    <% end %>
-      
+  <%= form_tag memberships_path, id: 'membership-form' do %>      
     <article id='payment-plans' style='display: flex; flex-direction: column; align-items: center;'>
       <h3>Upfront Memberships</h3>
       <% @upfront_plans.each do |plan| %>
@@ -71,55 +80,21 @@
     
     <article style='display: flex; flex-direction: row;'>
       <div id='cc-fields' style='padding-right: 10px; border: 1px solid gray;'>
-        <h4>Pay with card</h4>
-        <div class="form-row">
-          <label>
-            <span>Card Number</span>
-            <input type="text" size="20" data-stripe="number">
-          </label>
-        </div>
-        <div class="form-row">
-          <label>
-            <span>Expiration (MM/YY)</span>
-            <input type="text" size="2" data-stripe="exp_month">
-          </label>
-          <span> / </span>
-          <input type="text" size="2" data-stripe="exp_year">
-        </div>
-        <div class="form-row">
-          <label>
-            <span>CVC</span>
-            <input type="text" size="4" data-stripe="cvc">
-          </label>
-        </div>
+        <label>Pay with Credit Card</label>
+        <input type='radio' name='payment-method' value='credit-card' checked/>
+        <%= render partial: 'credit_card_fields' %>
       </div>
+      
       <div id='ba-fields' style='padding-left: 10px; border: 1px solid gray;'>
-        <h4>Pay with bank account</h4>
-        <div class="form-row">
-          <label>
-            <span>Account Holder Name</span>
-            <input type="text" size="20" data-stripe="name">
-          </label>
-        </div>
-        <div class="form-row">
-          <label>
-            <span>Account Number</span>
-            <input type="text" size="20" data-stripe="account-number">
-          </label>
-        </div>
-        <div class="form-row">
-          <label>
-            <span>Routing Number</span>
-            <input type="text" size="16" data-stripe="routing-number">
-          </label>
-        </div>
+        <label>Pay with Bank Account</label>
+        <input type='radio' name='payment-method' value='bank-account' />
+        <%= render partial: 'bank_account_fields' %>
       </div>
     </article>
-    
     <br />
     
     <div style='display: flex; justify-content: center'>
-      <input type="submit" class="submit" value="Save Membership">
+      <button type="submit" class="submit">Save Membership</button>
     </div>
             
   <% end %>
